@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-from scapy.all import *
+from scapy.all import*
 from scapy.layers.inet import IP, ICMP
-from scapy.layers.l2 import Ether
 
 
 def print_pkt(pkt):
@@ -25,6 +24,6 @@ def print_pkt(pkt):
 
         send(eth/ip/icmp/raw)
 
-if __name__ == '__main__':
+if __name__=='__main__':
     intface = ['enp0s3']
-    pkt = sniff(iface=intface, filter='icmp', prn=print_pkt)
+    pkt = sniff(iface= intface, filter= 'icmp', prn= print_pkt)
