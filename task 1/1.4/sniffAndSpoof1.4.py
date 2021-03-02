@@ -6,14 +6,9 @@ from scapy.layers.l2 import Ether
 
 def print_pkt(pkt):
     if(pkt[ICMP].type == 8):
-        eth = Ether()
-        eth.dst = pkt[Ether].src
-        eth.src = pkt[Ether].dst
-
         ip = IP()
         ip.dst = pkt[IP].src
         ip.src = pkt[IP].dst
-        ip. ihl = pkt[IP].ihl
 
         icmp = ICMP()
         icmp.id = pkt[ICMP].id
@@ -23,7 +18,7 @@ def print_pkt(pkt):
         raw = Raw()
         raw.load = pkt[Raw].load
 
-        send(eth/ip/icmp/raw)
+        send(ip/icmp/raw)
 
 if __name__ == '__main__':
     intface = ['enp0s3']
