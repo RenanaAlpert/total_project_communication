@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall
 
-all: myPing sniffer snifferTCP snifferPassword
+all: myPing snifferICMP snifferTCP snifferPassword
 
 snifferPassword: snifferPassword.o
 	$(CC) $(CFLAGS) snifferPassword.o -lpcap -o snifferPassword
@@ -15,11 +15,11 @@ myPing: myPing.o
 myPing.o: myPing.c
 	$(CC) $(CFLAGS) -c myPing.c -o myPing.o
 
-sniffer: sniffer.o
-	$(CC) $(CFLAGS) sniffer.o -lpcap -o sniffer
+snifferICMP: snifferICMP.o
+	$(CC) $(CFLAGS) snifferICMP.o -lpcap -o snifferICMP
 
-sniffer.o: sniffer.c
-	$(CC) $(CFLAGS) -c sniffer.c -o sniffer.o
+snifferICMP.o: snifferICMP.c
+	$(CC) $(CFLAGS) -c snifferICMP.c -o snifferICMP.o
 
 snifferTCP.o: snifferTCP.c
 	$(CC) $(CFLAGS) -c snifferTCP.c -o snifferTCP.o
