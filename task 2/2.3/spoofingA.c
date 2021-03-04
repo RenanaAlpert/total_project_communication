@@ -15,7 +15,7 @@
 
 struct packet
 {
-	//struct iphdr *iphdr;
+	struct iphdr *iphdr;
 	struct icmphdr icmphdr;
 	char msg[PACKETSIZE - sizeof(struct icmphdr)];
 };
@@ -44,21 +44,25 @@ unsigned short checksum(void *b, int len)
 /*--------------------------------------------------------------------*/
 /*--- ping - Create message and send it.                           ---*/
 /*--------------------------------------------------------------------*/
-void reply(struct sockaddr_in *addr, struct packet *pckt)
+void reply(struct sockaddr_in *addr, u_char *pckt)
 {
-	int sd;
+	printf("reply\n");
 
+	int sd;
 	sd = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (sd < 0)
 	{
-		perror("socket");
+		perror("[-] socket fail\n");
 		return;
 	}
+	printf("[+] open socket\n");
 
 	if (sendto(sd, &pckt, sizeof(pckt), 0, (struct sockaddr *)addr, sizeof(*addr)) <= 0)
 	{
-		perror("sendto");
+		perror("[-] sendto fail\n");
 	}
+	printf("[+] send reply\n");
+	printf("\n");
 
 	close(sd);
 }
@@ -69,37 +73,52 @@ void reply(struct sockaddr_in *addr, struct packet *pckt)
 /*--------------------------------------------------------------------*/
 void extractInfo(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
+	struct ethhdr *ethreq = (struct ethhdr *)packet;
 	struct iphdr *ipreq = (struct iphdr *)(packet + sizeof(struct ethhdr));
+	struct icmphdr *icmpreq = (struct icmphdr *)(packet + sizeof(struct ethhdr) + sizeof(struct iphdr));
 	struct sockaddr_in src, dest;
 	bzero(&dest, sizeof(dest));
-	src.sin_addr.s_addr = ipreq->daddr;
-	dest.sin_addr.s_addr = ipreq->saddr;
-	printf("The ip source of the request is: %s\n", inet_ntoa(dest.sin_addr));
-	printf("The ip destination of the request is: %s\n", inet_ntoa(src.sin_addr));
-	struct icmphdr *icmpreq = (struct icmphdr *)(packet + sizeof(struct ethhdr) + sizeof(struct iphdr));
+	src.sin_addr.s_addr = ipreq->saddr;
+	dest.sin_addr.s_addr = ipreq->daddr;
+	printf("The ip source of the request is: %s\n", inet_ntoa(src.sin_addr));
+	printf("The ip destination of the request is: %s\n", inet_ntoa(dest.sin_addr));
 	printf("The type of icmp of the request is: %d\n", icmpreq->type);
 	printf("The code of icmp of the request is: %d\n", icmpreq->code);
 	printf("\n");
 
-	
-	dest.sin_family = AF_INET;
-	dest.sin_port = 0;
+	if (icmpreq->type == 8)
+	{
+		for (int i = 0; i < 6; ++i)
+		{ // swap source and destination MACs
+			int bkp = ethreq->h_source[i];
+			ethreq->h_source[i] = ethreq->h_dest[i];
+			ethreq->h_dest[i] = bkp;
+		}
 
-	struct packet pckt;
+		ipreq->saddr = ipreq->daddr;
+		ipreq->daddr = src.sin_addr.s_addr;
+
+		src.sin_family = AF_INET;
+		src.sin_port = ICMP_ECHOREPLY;
+
+		icmpreq->type = 0;
+		//icmpreq->checksum = checksum(packet, sizeof(packet));
+		reply(&src, packet);
+	}
+
+	/*struct packet pckt;
 	bzero(&pckt, sizeof(pckt));
 
-	//pckt.iphdr->daddr = ipreq->saddr;
-	//pckt.iphdr->id = ipreq->id;
-	//pckt.iphdr->protocol = IPPROTO_ICMP;
-	//pckt.iphdr->saddr = ipreq->daddr;
+	pckt.iphdr->daddr = ipreq->saddr;
+	pckt.iphdr->id = ipreq->id;
+	pckt.iphdr->protocol = IPPROTO_ICMP;
+	pckt.iphdr->saddr = ipreq->daddr;
 
 	pckt.icmphdr.type = ICMP_ECHOREPLY;
 	pckt.icmphdr.un.echo.id = icmpreq->un.echo.id;
 	pckt.icmphdr.un.echo.sequence = icmpreq->un.echo.sequence;
 	pckt.icmphdr.checksum = checksum(&pckt, sizeof(pckt));
-	//pckt.msg = *(packet + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct icmphdr));
-
-	reply(&dest, &pckt);
+	//pckt.msg = *(packet + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct icmphdr));*/
 }
 
 int main()
@@ -107,7 +126,7 @@ int main()
 	pcap_t *handle;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	struct bpf_program fp;
-	char filter[] = "icmp";
+	char filter[] = "icmp[icmptype] == 8 or icmp[icmptype] == 0";
 	bpf_u_int32 net;
 
 	// Open live pcap session on NIC with name enp0s3.
