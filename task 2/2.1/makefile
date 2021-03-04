@@ -1,17 +1,13 @@
 CC = gcc
 CFLAGS = -Wall
 
-<<<<<<< HEAD:task 2/makefile
-all: myPing sniffer snifferICMP snifferTCP snifferPassword
+all:  sniffer snifferICMP snifferTCP snifferPassword
 
 sniffer: sniffer.o
 	$(CC) $(CFLAGS) sniffer.o -lpcap -o sniffer 
 
 sniffer.o: sniffer.c
 	$(CC) $(CFLAGS) -c sniffer.c -o sniffer.o
-=======
-all: snifferICMP snifferTCP snifferPassword
->>>>>>> cb64a07e3ade3b591fcc9bc1ea02fea9fe1bfafa:task 2/2.1/makefile
 
 snifferPassword: snifferPassword.o
 	$(CC) $(CFLAGS) snifferPassword.o -lpcap -o snifferPassword
@@ -34,8 +30,5 @@ snifferPassword.o: snifferPassword.c
 .PHONY: clean all
 
 clean:
-<<<<<<< HEAD:task 2/makefile
-	rm *.o myPing sniffer snifferTCP snifferICMP snifferPassword
-=======
-	rm *.o snifferICMP snifferTCP snifferPassword
->>>>>>> cb64a07e3ade3b591fcc9bc1ea02fea9fe1bfafa:task 2/2.1/makefile
+	rm *.o sniffer snifferTCP snifferICMP snifferPassword
+
