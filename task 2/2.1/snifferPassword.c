@@ -1,7 +1,7 @@
 /*****************************************************************************/
 /*** sniffer.c                                                             ***/
 /***                                                                       ***/
-/*** Sniffer to message thet use ICMP protocols.                           ***/
+/*** Sniffer to the password of the VM.                           ***/
 /*****************************************************************************/
 
 #include <pcap.h>
@@ -11,6 +11,7 @@
 #include <linux/if_ether.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <ctype.h>
 
 /*--------------------------------------------------------------------*/
 /*--- Extracts information from the packet that recived.           ---*/
@@ -24,11 +25,21 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     printf("The ip source is: %s\n", inet_ntoa(src.sin_addr));
     printf("The ip destination is: %s\n", inet_ntoa(dest.sin_addr));
     struct tcphdr *tcp = (struct tcphdr *)(packet + sizeof(struct ethhdr) + sizeof(struct iphdr));
-    printf("The port src is: %d\n", ntohs(tcp->th_sport));
-    printf("The port dest is: %d\n", ntohs(tcp->th_dport));
-    printf("\n");
+    char *data = (u_char*)(packet + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr));
+    int size_data = 0;
+    size_data = ntohs(ip->tot_len) - (sizeof(struct iphdr)) + sizeof(struct tcphdr);
+    if (size_data>0){
+        for (int i = 0; i < size_data; i++) {
+            if (isprint(*data))
+                printf ("%c", *data);
+            else
+                printf(",");
+            data++;
+        }
+        printf("\n");
+    }
+    return;
 }
-
 int main()
 {
     pcap_t *handle;
@@ -36,18 +47,13 @@ int main()
     struct bpf_program fp;
     char filter[] = "tcp and dst portrange 10-100";
     bpf_u_int32 net;
-
-
-    // Open live pcap session on NIC with name enp0s3
-    handle = pcap_open_live("enp0s3", BUFSIZ, 1, 1000, errbuf); 
-
+    // Open live pcap session on NIC with name br-fa2f4e6ce2dc
+    handle = pcap_open_live("br-fa2f4e6ce2dc", BUFSIZ, 1, 1000, errbuf); 
     // Compile filter into BPF psuedo-code
     pcap_compile(handle, &fp, filter, 0, net);      
     pcap_setfilter(handle, &fp);                             
-
     // Capture packets
     pcap_loop(handle, -1, got_packet, NULL);                
-
     pcap_close(handle);   //Close the handle 
     return 0;
 }

@@ -5,7 +5,7 @@ from scapy.layers.l2 import Ether
 
 
 def print_pkt(pkt):
-    if(pkt[ICMP].type == 8):
+    if pkt[ICMP].type == 8:
         ip = IP()
         ip.dst = pkt[IP].src
         ip.src = pkt[IP].dst
@@ -18,8 +18,9 @@ def print_pkt(pkt):
         raw = Raw()
         raw.load = pkt[Raw].load
 
-        send(ip/icmp/raw)
+        send(ip / icmp / raw)
+
 
 if __name__ == '__main__':
-    intface = ['enp0s3']
+    intface = 'enp0s3'
     pkt = sniff(iface=intface, filter='icmp', prn=print_pkt)
