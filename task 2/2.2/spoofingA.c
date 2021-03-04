@@ -1,125 +1,126 @@
-/*****************************************************************************/
-/*** myping.c                                                              ***/
-/***                                                                       ***/
-/*** Use the ICMP protocol to request "echo" from destination.             ***/
-/*****************************************************************************/
-
 #include <pcap.h>
+#include <stdio.h>
 #include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/ip_icmp.h>
+#include <string.h>
 #include <linux/if_ether.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <ctype.h>
 
-#define PACKETSIZE 1024
-
-struct packet
-{
-	//struct iphdr *iphdr;
-	struct icmphdr icmphdr;
-	char msg[PACKETSIZE - sizeof(struct icmphdr)];
+/* ICMP Header  */
+struct icmpheader {
+  unsigned char icmp_type; // ICMP message type
+  unsigned char icmp_code; // Error code
+  unsigned short int icmp_chksum; //Checksum for ICMP Header and data
+  unsigned short int icmp_id;     //Used for identifying request
+  unsigned short int icmp_seq;    //Sequence number
 };
 
-//struct protoent *proto = NULL;
-
-/*--------------------------------------------------------------------*/
-/*--- checksum - standard 1s complement checksum                   ---*/
-/*--------------------------------------------------------------------*/
-unsigned short checksum(void *b, int len)
+/* IP Header */
+struct ipheader {
+  unsigned char      iph_ihl:4, //IP header length
+                     iph_ver:4; //IP version
+  unsigned char      iph_tos; //Type of service
+  unsigned short int iph_len; //IP Packet length (data + header)
+  unsigned short int iph_ident; //Identification
+  unsigned short int iph_flag:3, //Fragmentation flags
+                     iph_offset:13; //Flags offset
+  unsigned char      iph_ttl; //Time to Live
+  unsigned char      iph_protocol; //Protocol type
+  unsigned short int iph_chksum; //IP datagram checksum
+  struct  in_addr    iph_sourceip; //Source IP address 
+  struct  in_addr    iph_destip;   //Destination IP address 
+};
+/*************************************************************
+  Given an IP packet, send it out using a raw socket. 
+**************************************************************/
+void send_raw_ip_packet(struct ipheader* ip)
 {
-	unsigned short *buf = b;
-	unsigned int sum = 0;
-	unsigned short result;
+    struct sockaddr_in dest_info;
+    int enable = 1;
 
-	for (sum = 0; len > 1; len -= 2)
-		sum += *buf++;
-	if (len == 1)
-		sum += *(unsigned char *)buf;
-	sum = (sum >> 16) + (sum & 0xFFFF);
-	sum += (sum >> 16);
-	result = ~sum;
-	return result;
+    // Step 1: Create a raw network socket.
+    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+
+    // Step 2: Set socket option.
+    setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable));
+
+    // Step 3: Provide needed information about destination.
+    dest_info.sin_family = AF_INET;
+    dest_info.sin_addr = ip->iph_destip;
+
+    // Step 4: Send the packet out.
+    sendto(sock, ip, ntohs(ip->iph_len), 0, 
+           (struct sockaddr *)&dest_info, sizeof(dest_info));
+    close(sock);
 }
 
-/*--------------------------------------------------------------------*/
-/*--- ping - Create message and send it.                           ---*/
-/*--------------------------------------------------------------------*/
-void reply(struct sockaddr_in *addr, struct packet *pckt)
+/**********************************************
+ * Listing 12.9: Calculating Internet Checksum
+ **********************************************/
+
+unsigned short in_cksum (unsigned short *buf, int length)
 {
-	int sd;
+   unsigned short *w = buf;
+   int nleft = length;
+   int sum = 0;
+   unsigned short temp=0;
 
-	sd = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if (sd < 0)
-	{
-		perror("socket");
-		return;
-	}
+   /*
+    * The algorithm uses a 32 bit accumulator (sum), adds
+    * sequential 16 bit words to it, and at the end, folds back all 
+    * the carry bits from the top 16 bits into the lower 16 bits.
+    */
+   while (nleft > 1)  {
+       sum += *w++;
+       nleft -= 2;
+   }
 
-	if (sendto(sd, &pckt, sizeof(pckt), 0, (struct sockaddr *)addr, sizeof(*addr)) <= 0)
-	{
-		perror("sendto");
-	}
+   /* treat the odd byte at the end, if any */
+   if (nleft == 1) {
+        *(u_char *)(&temp) = *(u_char *)w ;
+        sum += temp;
+   }
 
-	close(sd);
+   /* add back carry outs from top 16 bits to low 16 bits */
+   sum = (sum >> 16) + (sum & 0xffff);  // add hi 16 to low 16 
+   sum += (sum >> 16);                  // add carry 
+   return (unsigned short)(~sum);
 }
 
-/*--------------------------------------------------------------------*/
-/*--- Extracts information from the packet that recived			   ---*/
-/*--- and send reply.                                               ---*/
-/*--------------------------------------------------------------------*/
-void extractInfo(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
-{
-	struct iphdr *ipreq = (struct iphdr *)(packet + sizeof(struct ethhdr));
-	struct sockaddr_in src, dest;
-	bzero(&dest, sizeof(dest));
-	src.sin_addr.s_addr = ipreq->daddr;
-	dest.sin_addr.s_addr = ipreq->saddr;
-	printf("The ip source of the request is: %s\n", inet_ntoa(dest.sin_addr));
-	printf("The ip destination of the request is: %s\n", inet_ntoa(src.sin_addr));
-	struct icmphdr *icmpreq = (struct icmphdr *)(packet + sizeof(struct ethhdr) + sizeof(struct iphdr));
-	printf("The type of icmp of the request is: %d\n", icmpreq->type);
-	printf("The code of icmp of the request is: %d\n", icmpreq->code);
-	printf("\n");
+int main() {
+   char buffer[1500];
 
-	
-	dest.sin_family = AF_INET;
-	dest.sin_port = 0;
+   memset(buffer, 0, 1500);
 
-	struct packet pckt;
-	bzero(&pckt, sizeof(pckt));
+   /*********************************************************
+      Step 1: Fill in the ICMP header.
+    ********************************************************/
+   struct icmpheader *icmp = (struct icmpheader *) 
+                             (buffer + sizeof(struct ipheader));
+   icmp->icmp_type = 0; //ICMP Type: 8 is request, 0 is reply.
 
-	//pckt.iphdr->daddr = ipreq->saddr;
-	//pckt.iphdr->id = ipreq->id;
-	//pckt.iphdr->protocol = IPPROTO_ICMP;
-	//pckt.iphdr->saddr = ipreq->daddr;
+   // Calculate the checksum for integrity
+   icmp->icmp_chksum = 0;
+   icmp->icmp_chksum = in_cksum((unsigned short *)icmp, 
+                                 sizeof(struct icmpheader));
 
-	pckt.icmphdr.type = ICMP_ECHOREPLY;
-	pckt.icmphdr.un.echo.id = icmpreq->un.echo.id;
-	pckt.icmphdr.un.echo.sequence = icmpreq->un.echo.sequence;
-	pckt.icmphdr.checksum = checksum(&pckt, sizeof(pckt));
-	//pckt.msg = *(packet + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct icmphdr));
+   /*********************************************************
+      Step 2: Fill in the IP header.
+    ********************************************************/
+   struct ipheader *ip = (struct ipheader *) buffer;
+   ip->iph_ver = 4;
+   ip->iph_ihl = 5;
+   ip->iph_ttl = 200;
+   ip->iph_sourceip.s_addr = inet_addr("1.2.3.4");
+   ip->iph_destip.s_addr = inet_addr("10.9.0.4");
+   ip->iph_protocol = IPPROTO_ICMP; 
+   ip->iph_len = htons(sizeof(struct ipheader) +  sizeof(struct icmpheader));
 
-	reply(&dest, &pckt);
-}
+   /*********************************************************
+      Step 3: Finally, send the spoofed packet
+    ********************************************************/
+   send_raw_ip_packet (ip);
 
-int main()
-{
-	pcap_t *handle;
-	char errbuf[PCAP_ERRBUF_SIZE];
-	struct bpf_program fp;
-	char filter[] = "icmp";
-	bpf_u_int32 net;
-
-	// Open live pcap session on NIC with name enp0s3.
-	handle = pcap_open_live("enp0s3", BUFSIZ, 1, 1000, errbuf);
-
-	// Compile filter into BPF psuedo-code
-	pcap_compile(handle, &fp, filter, 0, net);
-	pcap_setfilter(handle, &fp);
-
-	// Capture packets
-	pcap_loop(handle, -1, extractInfo, NULL);
-
-	pcap_close(handle); //Close the handle
-	return 0;
+   return 0;
 }
