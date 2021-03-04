@@ -1,7 +1,7 @@
 /*****************************************************************************/
 /*** sniffer.c                                                             ***/
 /***                                                                       ***/
-/*** Sniffer to message thet use ICMP protocols.                           ***/
+/*** Sniffer to message thet use TCP protocols.                           ***/
 /*****************************************************************************/
 
 #include <pcap.h>
