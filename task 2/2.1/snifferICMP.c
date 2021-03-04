@@ -35,8 +35,8 @@ int main()
     char filter[] = "icmp";
     bpf_u_int32 net;
 
-    // Open live pcap session on NIC with name br-fa2f4e6ce2dc
-    handle = pcap_open_live("br-fa2f4e6ce2dc", BUFSIZ, 1, 1000, errbuf); 
+    // Open live pcap session on NIC with name "enp0s3"
+    handle = pcap_open_live("enp0s3", BUFSIZ, 1, 1000, errbuf); 
 
     // Compile filter into BPF psuedo-code
     pcap_compile(handle, &fp, filter, 0, net);      

@@ -1,7 +1,13 @@
 CC = gcc
 CFLAGS = -Wall
 
-all: snifferICMP snifferTCP snifferPassword
+all:  sniffer snifferICMP snifferTCP snifferPassword
+
+sniffer: sniffer.o
+	$(CC) $(CFLAGS) sniffer.o -lpcap -o sniffer 
+
+sniffer.o: sniffer.c
+	$(CC) $(CFLAGS) -c sniffer.c -o sniffer.o
 
 snifferPassword: snifferPassword.o
 	$(CC) $(CFLAGS) snifferPassword.o -lpcap -o snifferPassword
@@ -24,4 +30,5 @@ snifferPassword.o: snifferPassword.c
 .PHONY: clean all
 
 clean:
-	rm *.o snifferICMP snifferTCP snifferPassword
+	rm *.o sniffer snifferTCP snifferICMP snifferPassword
+
