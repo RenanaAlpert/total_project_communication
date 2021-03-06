@@ -3,11 +3,11 @@ CFLAGS = -Wall
 
 all: spoof
 
-spoof: spoofingA.o
-	$(CC) $(CFLAGS) spoofingA.o -lpcap -o spoof
+spoof: spoofing.o
+	$(CC) $(CFLAGS) spoofing.o -lpcap -o spoof
 
-spoofingA.o: spoofingA.c
-	$(CC) $(CFLAGS) -c spoofingA.c -o spoofingA.o
+spoofingA.o: spoofing.c
+	$(CC) $(CFLAGS) -c spoofing.c -o spoofing.o
 
 .PHONY: clean all
 

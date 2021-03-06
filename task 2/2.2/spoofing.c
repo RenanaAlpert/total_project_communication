@@ -98,7 +98,7 @@ int main() {
     ********************************************************/
    struct icmpheader *icmp = (struct icmpheader *) 
                              (buffer + sizeof(struct ipheader));
-   icmp->icmp_type = 0; //ICMP Type: 8 is request, 0 is reply.
+   icmp->icmp_type = 8; //ICMP Type: 8 is request, 0 is reply.
 
    // Calculate the checksum for integrity
    icmp->icmp_chksum = 0;
@@ -112,8 +112,8 @@ int main() {
    ip->iph_ver = 4;
    ip->iph_ihl = 5;
    ip->iph_ttl = 200;
-   ip->iph_sourceip.s_addr = inet_addr("1.2.3.4");
-   ip->iph_destip.s_addr = inet_addr("10.9.0.4");
+   ip->iph_sourceip.s_addr = inet_addr("10.9.0.4");
+   ip->iph_destip.s_addr = inet_addr("1.2.3.4");
    ip->iph_protocol = IPPROTO_ICMP; 
    ip->iph_len = htons(sizeof(struct ipheader) +  sizeof(struct icmpheader));
 
