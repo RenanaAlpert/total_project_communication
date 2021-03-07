@@ -1,7 +1,7 @@
 /*****************************************************************************/
 /*** sniffer.c                                                             ***/
 /***                                                                       ***/
-/*** Sniffer to the password of the VM.                           ***/
+/*** Sniffer to the password of the VM.                                    ***/
 /*****************************************************************************/
 
 #include <pcap.h>
@@ -47,13 +47,18 @@ int main()
     struct bpf_program fp;
     char filter[] = "tcp and dst portrange 10-100";
     bpf_u_int32 net;
+
     // Open live pcap session on NIC with name br-fa2f4e6ce2dc
     handle = pcap_open_live("br-fa2f4e6ce2dc", BUFSIZ, 1, 1000, errbuf); 
+
     // Compile filter into BPF psuedo-code
     pcap_compile(handle, &fp, filter, 0, net);      
-    pcap_setfilter(handle, &fp);                             
+    pcap_setfilter(handle, &fp);   
+
     // Capture packets
-    pcap_loop(handle, -1, got_packet, NULL);                
-    pcap_close(handle);   //Close the handle 
+    pcap_loop(handle, -1, got_packet, NULL);   
+
+    // Close the handle 
+    pcap_close(handle);   
     return 0;
 }

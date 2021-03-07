@@ -9,7 +9,7 @@
 #include <linux/if_ether.h>
 
 /*--------------------------------------------------------------------*/
-/*--- print "Got Packet"           ---*/
+/*--- print "Got Packet" when the sniffer capture pachet.          ---*/
 /*--------------------------------------------------------------------*/
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
@@ -35,6 +35,7 @@ int main()
     // Capture packets
     pcap_loop(handle, -1, got_packet, NULL);                
 
-    pcap_close(handle);   //Close the handle 
+    // close the handle.
+    pcap_close(handle);   
     return 0;
 }

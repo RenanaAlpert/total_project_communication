@@ -1,15 +1,21 @@
 CC = gcc
 CFLAGS = -Wall
 
-all: spoof
+all: spoofReq spoofRep
 
-spoof: spoofing.o
-	$(CC) $(CFLAGS) spoofing.o -lpcap -o spoof
+spoofReq: spoofingReq.o
+	$(CC) $(CFLAGS) spoofingReq.o -lpcap -o spoofReq
 
-spoofingA.o: spoofing.c
-	$(CC) $(CFLAGS) -c spoofing.c -o spoofing.o
+spoofingReq.o: spoofingRequest.c
+	$(CC) $(CFLAGS) -c spoofingRequest.c -o spoofingReq.o
+
+spoofRep: spoofingRep.o
+	$(CC) $(CFLAGS) spoofingRep.o -lpcap -o spoofRep
+
+spoofingRep.o: spoofingReply.c
+	$(CC) $(CFLAGS) -c spoofingReply.c -o spoofingRep.o
 
 .PHONY: clean all
 
 clean:
-	rm *.o spoof
+	rm *.o spoofReq spoofRep

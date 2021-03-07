@@ -3,8 +3,12 @@ from scapy.all import *
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether
 
+""" Sniff and spoof to IP in the LAN. """
 
 def icmp_reply(pkt):
+    """
+    Reply to the packet which the sniffer capture.
+    """
     if pkt[ARP].op == 1:
         ip = IP()
         ip.dst = pkt[ARP].psrc
@@ -17,5 +21,4 @@ def icmp_reply(pkt):
 
 
 if __name__ == '__main__':
-    intface = ['br-78ead1488d97']
-    pkt = sniff(iface=intface, filter='arp', prn=icmp_reply)
+    pkt = sniff(iface='br-78ead1488d97', filter='arp', prn=icmp_reply)

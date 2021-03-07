@@ -1,3 +1,7 @@
+/*****************************************************************************/
+/*** sfoofingReply.c                                                       ***/
+/*****************************************************************************/
+
 #include <pcap.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -9,8 +13,8 @@
 
 /* ICMP Header  */
 struct icmpheader {
-  unsigned char icmp_type; // ICMP message type
-  unsigned char icmp_code; // Error code
+  unsigned char icmp_type;        // ICMP message type
+  unsigned char icmp_code;        // Error code
   unsigned short int icmp_chksum; //Checksum for ICMP Header and data
   unsigned short int icmp_id;     //Used for identifying request
   unsigned short int icmp_seq;    //Sequence number
@@ -18,19 +22,20 @@ struct icmpheader {
 
 /* IP Header */
 struct ipheader {
-  unsigned char      iph_ihl:4, //IP header length
-                     iph_ver:4; //IP version
-  unsigned char      iph_tos; //Type of service
-  unsigned short int iph_len; //IP Packet length (data + header)
-  unsigned short int iph_ident; //Identification
-  unsigned short int iph_flag:3, //Fragmentation flags
+  unsigned char      iph_ihl:4,     //IP header length
+                     iph_ver:4;     //IP version
+  unsigned char      iph_tos;       //Type of service
+  unsigned short int iph_len;       //IP Packet length (data + header)
+  unsigned short int iph_ident;     //Identification
+  unsigned short int iph_flag:3,    //Fragmentation flags
                      iph_offset:13; //Flags offset
-  unsigned char      iph_ttl; //Time to Live
-  unsigned char      iph_protocol; //Protocol type
-  unsigned short int iph_chksum; //IP datagram checksum
-  struct  in_addr    iph_sourceip; //Source IP address 
-  struct  in_addr    iph_destip;   //Destination IP address 
+  unsigned char      iph_ttl;       //Time to Live
+  unsigned char      iph_protocol;  //Protocol type
+  unsigned short int iph_chksum;    //IP datagram checksum
+  struct  in_addr    iph_sourceip;  //Source IP address 
+  struct  in_addr    iph_destip;    //Destination IP address 
 };
+
 /*************************************************************
   Given an IP packet, send it out using a raw socket. 
 **************************************************************/
@@ -41,24 +46,35 @@ void send_raw_ip_packet(struct ipheader* ip)
 
     // Step 1: Create a raw network socket.
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    if (sock < 0)
+    {
+      printf("[-] failed Create a raw network socket");
+      return;
+    }
 
     // Step 2: Set socket option.
-    setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable));
+    if(setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable)) < 0)
+    {
+      printf("[-] failed Set socket option");
+      return;
+    } 
 
     // Step 3: Provide needed information about destination.
     dest_info.sin_family = AF_INET;
     dest_info.sin_addr = ip->iph_destip;
 
     // Step 4: Send the packet out.
-    sendto(sock, ip, ntohs(ip->iph_len), 0, 
-           (struct sockaddr *)&dest_info, sizeof(dest_info));
+    if(sendto(sock, ip, ntohs(ip->iph_len), 0, (struct sockaddr *)&dest_info, sizeof(dest_info)) < 0)
+    {
+      printf("[-] failed Send the packet out");
+      return;
+    }
     close(sock);
 }
 
 /**********************************************
- * Listing 12.9: Calculating Internet Checksum
+ * Calculating Checksum
  **********************************************/
-
 unsigned short in_cksum (unsigned short *buf, int length)
 {
    unsigned short *w = buf;
@@ -96,14 +112,12 @@ int main() {
    /*********************************************************
       Step 1: Fill in the ICMP header.
     ********************************************************/
-   struct icmpheader *icmp = (struct icmpheader *) 
-                             (buffer + sizeof(struct ipheader));
-   icmp->icmp_type = 8; //ICMP Type: 8 is request, 0 is reply.
+   struct icmpheader *icmp = (struct icmpheader *)(buffer + sizeof(struct ipheader));
+   icmp->icmp_type = 0; //ICMP Type: 0 is reply.
 
    // Calculate the checksum for integrity
    icmp->icmp_chksum = 0;
-   icmp->icmp_chksum = in_cksum((unsigned short *)icmp, 
-                                 sizeof(struct icmpheader));
+   icmp->icmp_chksum = in_cksum((unsigned short *)icmp, sizeof(struct icmpheader));
 
    /*********************************************************
       Step 2: Fill in the IP header.
@@ -112,13 +126,13 @@ int main() {
    ip->iph_ver = 4;
    ip->iph_ihl = 5;
    ip->iph_ttl = 200;
-   ip->iph_sourceip.s_addr = inet_addr("10.9.0.4");
-   ip->iph_destip.s_addr = inet_addr("1.2.3.4");
+   ip->iph_sourceip.s_addr = inet_addr("1.2.3.4");
+   ip->iph_destip.s_addr = inet_addr("10.9.0.6");
    ip->iph_protocol = IPPROTO_ICMP; 
    ip->iph_len = htons(sizeof(struct ipheader) +  sizeof(struct icmpheader));
 
    /*********************************************************
-      Step 3: Finally, send the spoofed packet
+      Step 3: Send the spoofed packet
     ********************************************************/
    send_raw_ip_packet (ip);
 

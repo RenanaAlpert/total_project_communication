@@ -3,8 +3,12 @@ from scapy.all import *
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether
 
+""" Sniff and spoof to IP outside the LAN. """
 
-def print_pkt(pkt):
+def reply(pkt):
+    """
+    Reply to the packet which the sniffer capture.
+    """
     if pkt[ICMP].type == 8:
         ip = IP()
         ip.dst = pkt[IP].src
@@ -22,5 +26,4 @@ def print_pkt(pkt):
 
 
 if __name__ == '__main__':
-    intface = 'enp0s3'
-    pkt = sniff(iface=intface, filter='icmp', prn=print_pkt)
+    pkt = sniff(iface='enp0s3', filter='icmp', prn=reply)
